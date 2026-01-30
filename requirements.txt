@@ -1,0 +1,4 @@
+pyspark
+requests
+snowflake-connector-python
+pandas
