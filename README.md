@@ -1,32 +1,46 @@
-🪙 Crypto-to-Snowflake ETL Pipeline:
+🪙 Crypto-to-Snowflake ETL Pipeline
 
-A modular Python-based ETL pipeline that ingests real-time market data from the CoinGecko API into a Snowflake Cloud Data Warehouse.
-
-
-🏗️ Architecture & Features:
-
-- Orchestration: Managed by a central main.py to ensure sequential execution and error propagation.
-
-- Security: Zero-trust credential management using .env and .gitignore to prevent secret leaks.
-
-- Data Quality: Integrated "Gatekeeper" layer in transform.py to validate schemas and drop null values before ingestion.
-
-- Resilience: Implemented raise_for_status() to handle API failures gracefully.
+This is an Automated Data Pipeline (ETL) that acts like a "Digital Courier." It fetches live cryptocurrency prices from the internet (Extraction), cleans the data so it's perfect (Transformation), and safely stores it in a professional Cloud Data Warehouse called Snowflake (Loading).
 
 
-📂 Structure:
+🚀 How it Works (The "Engine")
 
-- src/: Decoupled logic for Extract, Transform, and Load.
+- Extraction: We talk to the CoinGecko API to get real-time prices for Bitcoin, Ethereum, and more.
 
-- data/: Local staging for raw JSON and processed CSV (Git-ignored).
+- Transformation: Using Python and Pandas, we verify that the data isn't "broken" or missing values before we send it to our database.
 
-- .env: Encrypted-style local credential storage.
+- Loading: We use a "Smart Upload" (Idempotent MERGE) in Snowflake. This ensures that even if you run the script 100 times, you never get messy duplicate data.
+
+- Logging: Every time the pipeline runs, it writes a "diary entry" in a Logs Table. If something fails, the pipeline tells us exactly why.
 
 
-🚀 Execution:
+📂 What's Inside?
 
-- Configure Snowflake credentials in .env.
+main.py: The "Brain" of the project that starts the whole process.
 
-- Install dependencies: pip install -r requirements.txt.
+src/: The "Internal Parts" (Extract, Transform, Load, and Logger modules).
 
-- Run: python main.py
+database_setup.sql: The blueprint to build the tables in Snowflake.
+
+analysis_queries.sql: The smart math used to turn raw data into a dashboard.
+
+dashboard_view.png: A screenshot of our final results.
+
+
+📊 Final Results: Live Market Monitor
+
+The pipeline feeds this live dashboard, allowing users to track price trends across multiple assets instantly.
+
+
+🛠️ How to Run it Yourself
+
+- Prepare Snowflake: Run the code in database_setup.sql inside your Snowflake account.
+
+- Add Credentials: Put your Snowflake username/password into the .env file.
+
+- Install Tools: Run pip install -r requirements.txt in your terminal.
+
+- Launch: Run python main.py
+
+
+![Real Time Crypto Market Trends](dashboard_view.png)
