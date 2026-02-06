@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  airflow:
+    image: apache/airflow:2.7.1
+    container_name: crypto_etl_pipeline-airflow-1
+    # Volumes link your local Windows project folders into the Docker container
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./requirements.txt:/opt/airflow/requirements.txt
+      # Mapping .env so Docker can see your secrets
+      - ./.env:/opt/airflow/.env 
+    ports:
+      - "8080:8080"
+    # ADDING: Resource limits to keep your PC smooth
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+    # UPDATED COMMAND: Now starts the Scheduler AND the Webserver
+    command: >
+      bash -c "airflow db init &&
+      airflow users create --username admin --password $${AIRFLOW_ADMIN_PASSWORD} --firstname Heena --lastname DE --role Admin --email admin@example.com &&
+      (airflow scheduler & airflow webserver)"
+    environment:
+      # 1. Standard Airflow Config
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+      
+      # 2. Security: References the secret in your .env
+      - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
+      
+      # 3. Dynamic setup: Tells Airflow to install your libraries
+      - _PIP_ADDITIONAL_REQUIREMENTS=-r /opt/airflow/requirements.txt
+      
+      # 4. Connection: Injects your Snowflake credentials automatically
+      - AIRFLOW_CONN_SNOWFLAKE_CONN=${AIRFLOW_CONN_SNOWFLAKE_CONN}
+      
+      # 5. Pathing & Admin Handle
+      - ENV_FILE=/opt/airflow/.env
+      - AIRFLOW_ADMIN_PASSWORD=${AIRFLOW_ADMIN_PASSWORD}

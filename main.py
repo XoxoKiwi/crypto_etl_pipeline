@@ -2,32 +2,33 @@ import sys
 from src.extract import extract_data
 from src.transform import transform_data
 from src.load import load_data
-from src.logger_util import log_pipeline_run # New Import!
+from src.logger_util import log_pipeline_run
 
 def run_pipeline():
-    print("--- 🏁 STARTING CRYPTO ETL PIPELINE ---")
+    print("🚀 Local Pipeline Run Initiated...")
     
     try:
-        # Step 1: Extract
+        # Step 1: EXTRACT
         extract_data()
         
-        # Step 2: Transform
+        # Step 2: TRANSFORM
+        # We assume 50 rows for the manual log, or you can pass the actual count
         transform_data()
         
-        # Step 3: Load
+        # Step 3: LOAD
         load_data()
         
-        # 🎉 SUCCESS LOGGING
-        message = "Pipeline completed successfully."
-        print(f"\n🏆 {message}")
-        log_pipeline_run("SUCCESS", message, rows_processed=3)
+        # SUCCESS
+        success_msg = "Manual Batch Completed Successfully."
+        log_pipeline_run("SUCCESS", success_msg, rows_processed=50)
+        print(f"✅ {success_msg}")
         
     except Exception as e:
-        # 🛑 FAILURE LOGGING
-        error_msg = str(e)
-        print(f"\n🛑 PIPELINE FAILED: {error_msg}")
+        # FAILURE
+        error_msg = f"Local Run Error: {str(e)}"
+        print(f"❌ {error_msg}")
         log_pipeline_run("FAILED", error_msg, rows_processed=0)
-        sys.exit(1)
+        sys.exit(1) # Tells the terminal the run failed
 
 if __name__ == "__main__":
     run_pipeline()

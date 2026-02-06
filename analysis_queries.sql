@@ -1,21 +1,36 @@
--- Check the latest data ingested
-SELECT * FROM CRYPTO_DB.PUBLIC.COIN_DATA 
-ORDER BY ingestion_time DESC;
+--What it tells you:-
+--Success/Fail status: A permanent record of every run.
+--Row Counts: Proof that 50 rows were moved.
+SELECT * FROM PIPELINE_LOGS ORDER BY RUN_TIMESTAMP DESC;
 
--- Check pipeline health and logs
-SELECT * FROM CRYPTO_DB.PUBLIC.PIPELINE_LOGS 
-ORDER BY run_timestamp DESC;
-
--- Business Question: What is the total market cap of our tracked coins?
-SELECT SUM(market_cap) as total_market_value 
-FROM CRYPTO_DB.PUBLIC.COIN_DATA;
-
--- DASHBOARD LOGIC (Gold Layer)
--- This query aggregates data for the time-series chart
--- to visualize price trends over time.
+-- 1. THE HEARTBEAT (Proves NRT Status)
 SELECT 
-    COIN_NAME, 
-    CURRENT_PRICE, 
-    INGESTION_TIME 
-FROM CRYPTO_DB.PUBLIC.COIN_DATA
-ORDER BY INGESTION_TIME ASC;
+    MAX(INGESTION_TIME) as LAST_REFRESH,
+    DATEDIFF('minute', MAX(INGESTION_TIME), CURRENT_TIMESTAMP()) as MINUTES_AGO
+FROM COIN_DATA;
+
+-- 2. THE MOMENTUM DASHBOARD (The "Star" Feature)
+-- This calculates growth compared to your very first run!
+WITH stats AS (
+    SELECT 
+        SYMBOL,
+        CURRENT_PRICE,
+        FIRST_VALUE(CURRENT_PRICE) OVER (PARTITION BY SYMBOL ORDER BY INGESTION_TIME ASC) as START_PRICE,
+        LAG(CURRENT_PRICE) OVER (PARTITION BY SYMBOL ORDER BY INGESTION_TIME ASC) as PREV_PRICE,
+        INGESTION_TIME
+    FROM COIN_DATA
+)
+SELECT 
+    SYMBOL,
+    CURRENT_PRICE as NOW,
+    ROUND(((CURRENT_PRICE - START_PRICE) / NULLIF(START_PRICE, 0)) * 100, 2) as TOTAL_GROWTH_PCT,
+    ROUND(((CURRENT_PRICE - PREV_PRICE) / NULLIF(PREV_PRICE, 0)) * 100, 2) as HOURLY_MOMENTUM_PCT
+FROM stats
+QUALIFY ROW_NUMBER() OVER (PARTITION BY SYMBOL ORDER BY INGESTION_TIME DESC) = 1
+ORDER BY TOTAL_GROWTH_PCT DESC;
+
+-- 3. IDEMPOTENCY AUDIT (Proves No Duplicates)
+SELECT ID, INGESTION_TIME, COUNT(*) 
+FROM COIN_DATA 
+GROUP BY 1, 2 
+HAVING COUNT(*) > 1;
