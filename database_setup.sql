@@ -1,8 +1,8 @@
 -- ========================================================
 -- 1. COMPUTE LAYER: THE ENGINE
 -- ========================================================
--- We use XSMALL to save credits. 
--- AUTO_SUSPEND = 60 ensures it turns off 1 min after the job finishes.
+-- Using XSMALL to keep costs near zero for a personal project.
+-- AUTO_SUSPEND = 60 ensures it turns off 1 minute after the DAG finishes.
 CREATE WAREHOUSE IF NOT EXISTS CRYPTO_WH 
 WITH 
     WAREHOUSE_SIZE = 'XSMALL' 
@@ -14,53 +14,50 @@ WITH
 -- 2. STORAGE LAYER: DATABASE & SCHEMA
 -- ========================================================
 CREATE DATABASE IF NOT EXISTS CRYPTO_DB;
-
 USE DATABASE CRYPTO_DB;
 USE SCHEMA PUBLIC;
 
 -- ========================================================
--- 3. THE VAULT: MAIN DATA TABLE (TIME-SERIES)
+-- 3. THE VAULT: PRODUCTION DATA TABLE (GOLD LAYER)
 -- ========================================================
--- This table stores every version of the price over time.
+-- This table stores the final, clean, time-series data.
 CREATE TABLE IF NOT EXISTS COIN_DATA (
-    ID STRING,                   -- e.g., 'bitcoin'
+    COIN_NAME STRING,            -- e.g., 'Bitcoin'
     SYMBOL STRING,               -- e.g., 'BTC'
-    CURRENT_PRICE NUMBER(38, 8), -- High precision for small coins
+    CURRENT_PRICE NUMBER(38, 8), 
     MARKET_CAP NUMBER(38, 2),    
     TOTAL_VOLUME NUMBER(38, 2),  
-    PRICE_CHANGE_24H FLOAT,      
     INGESTION_TIME TIMESTAMP_NTZ,
     
-    -- COMPOSITE KEY: Prevents duplicate rows for the same coin at the same time.
-    -- This is what allows your Window Functions (LAG, FIRST_VALUE) to work.
-    CONSTRAINT pk_coin_time PRIMARY KEY (ID, INGESTION_TIME)
+    -- Composite Primary Key ensures data integrity for time-series analysis
+    CONSTRAINT pk_coin_time PRIMARY KEY (COIN_NAME, INGESTION_TIME)
 );
 
 -- ========================================================
--- 4. THE QUARANTINE: DEAD LETTER TABLE
+-- 4. THE STAGING AREA: (BRONZE/SILVER LAYER)
 -- ========================================================
--- If data fails your Python quality checks, we move it here instead of deleting it.
-CREATE TABLE IF NOT EXISTS COIN_DATA_ERRORS (
-    ID STRING,
-    SYMBOL STRING,
-    CURRENT_PRICE FLOAT,
-    ERROR_REASON STRING,         -- e.g., "Zero price detected"
-    FAILED_AT TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+-- Transient tables do not have Fail-safe storage, saving on costs.
+-- This is where the Python 'load.py' script dumps data before the MERGE.
+CREATE OR REPLACE TRANSIENT TABLE COIN_DATA_STAGE (
+    COIN_NAME STRING, 
+    SYMBOL STRING, 
+    CURRENT_PRICE NUMBER(38,8),
+    MARKET_CAP NUMBER(38,2), 
+    TOTAL_VOLUME NUMBER(38,2), 
+    INGESTION_TIME TIMESTAMP_NTZ
 );
 
 -- ========================================================
 -- 5. OBSERVABILITY: PIPELINE AUDIT LOGS
 -- ========================================================
--- This table is updated by your logger_util.py script.
+-- This table is fueled by your 'logger_util.py'
 CREATE TABLE IF NOT EXISTS PIPELINE_LOGS (
     RUN_TIMESTAMP TIMESTAMP_NTZ,
     STATUS STRING,                -- 'SUCCESS' or 'FAILED'
-    MESSAGE STRING,               -- Error details or summary
+    MESSAGE STRING,               -- Error details or 'Batch complete'
     ROWS_PROCESSED INTEGER
 );
 
--- ========================================================
--- 6. VERIFICATION
--- ========================================================
-SHOW TABLES;
+-- Quick Check: Verify the setup
+SHOW WAREHOUSES LIKE 'CRYPTO_WH';
 DESC TABLE COIN_DATA;
