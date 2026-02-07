@@ -1,46 +1,49 @@
-🪙 Crypto-to-Snowflake ETL Pipeline
+🪙 Modular Crypto-to-Snowflake ETL Pipeline
 
-This is an Automated Data Pipeline (ETL) that acts like a "Digital Courier." It fetches live cryptocurrency prices from the internet (Extraction), cleans the data so it's perfect (Transformation), and safely stores it in a professional Cloud Data Warehouse called Snowflake (Loading).
+- Scheduled Batch Orchestration & Market Intelligence
 
-
-🚀 How it Works (The "Engine")
-
-- Extraction: We talk to the CoinGecko API to get real-time prices for Bitcoin, Ethereum, and more.
-
-- Transformation: Using Python and Pandas, we verify that the data isn't "broken" or missing values before we send it to our database.
-
-- Loading: We use a "Smart Upload" (Idempotent MERGE) in Snowflake. This ensures that even if you run the script 100 times, you never get messy duplicate data.
-
-- Logging: Every time the pipeline runs, it writes a "diary entry" in a Logs Table. If something fails, the pipeline tells us exactly why.
+This project demonstrates a high-quality Data Engineering solution for orchestrating cryptocurrency market data into Snowflake using Apache Airflow. It is built with a focus on idempotency, modular service architecture, and comprehensive auditability.
 
 
-📂 What's Inside?
+🏗️ Engineering Design Patterns
 
-main.py: The "Brain" of the project that starts the whole process.
+- Orchestration Layer Automated batch execution is managed via Apache Airflow (Docker-hosted), utilizing a PythonOperator with catchup=False to ensure deterministic scheduling and optimized resource consumption.
 
-src/: The "Internal Parts" (Extract, Transform, Load, and Logger modules).
+- Modular Service Architecture The ETL logic is decoupled into dedicated extract, transform, and load modules. This separation of concerns facilitates isolated Integration Testing and long-term code maintainability.
 
-database_setup.sql: The blueprint to build the tables in Snowflake.
+- Idempotent Load Strategy To ensure data reliability, the pipeline implements the Snowflake MERGE pattern. This "upsert" logic prevents record duplication by matching on a composite key of Asset Name + Captured At (UTC).
 
-analysis_queries.sql: The smart math used to turn raw data into a dashboard.
-
-dashboard_view.png: A screenshot of our final results.
+- Resiliency & Retries Built-in Airflow Retry Policies (2 retries, 5-minute delay) handle transient API rate limits or database connectivity events without manual intervention.
 
 
-📊 Final Results: Live Market Monitor
+🧠 Data Model & Intelligence
 
-The pipeline feeds this live dashboard, allowing users to track price trends across multiple assets instantly.
+- The pipeline enforces a strict 6-column data contract: asset, price_usd, captured_at_utc, momentum_pct, total_growth_pct, and last_updated_utc.
 
+- CRYPTO_PRICES (Source of Truth) Standardized via UTC Normalization to ensure global timestamp consistency for multi-region financial analysis.
 
-🛠️ How to Run it Yourself
+- ASSET_METRICS (Analytical Layer) Calculates Run-Gap Momentum using SQL LAG() functions. This logic is relative to the last available observation, making the metrics resilient to schedule gaps or system downtime.
 
-- Prepare Snowflake: Run the code in database_setup.sql inside your Snowflake account.
-
-- Add Credentials: Put your Snowflake username/password into the .env file.
-
-- Install Tools: Run pip install -r requirements.txt in your terminal.
-
-- Launch: Run python main.py
+- PIPELINE_LOGS (Audit Layer) A centralized logging system in Snowflake that captures STATUS, ROWS_PROCESSED, and full error tracebacks for every batch execution.
 
 
-![Real Time Crypto Market Trends](dashboard_view.png)
+📂 Repository Structure
+
+- dags/: Contains the Airflow DAG definition and task dependency graphs.
+
+- src/: The core ETL engine including API ingestion (Pandas), transformation logic, and Snowflake loading.
+
+- database_setup.sql: Data Definition Language (DDL) for the persistent warehouse layer and audit tables.
+
+- analysis_queries.sql: Advanced SQL logic used to derive momentum and asset growth KPIs.
+
+- .gitignore: Strictly enforced to prevent the leakage of .env credentials and local session files.
+
+
+🛡️ Operational Standards
+
+- Observability Every pipeline run is indexed in Snowflake for rapid debugging and health monitoring.
+
+- Secrets Management Zero-leakage policy via environment-based credential handling (.env).
+
+- Data Integrity Pre-load validation checks ensure that only records matching the 6-column contract reach the production warehouse.
