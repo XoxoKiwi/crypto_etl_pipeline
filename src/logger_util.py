@@ -12,9 +12,9 @@ def log_pipeline_run(status, message, rows_processed=0):
             user=os.getenv('SNOWFLAKE_USER'),
             password=os.getenv('SNOWFLAKE_PASS'),
             account=os.getenv('SNOWFLAKE_ACCOUNT'),
-            warehouse='CRYPTO_WH',
-            database='CRYPTO_DB',
-            schema='PUBLIC'
+            warehouse=os.getenv('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'),
+            database=os.getenv('SNOWFLAKE_DATABASE', 'CRYPTO_DB'), 
+            schema=os.getenv('SNOWFLAKE_SCHEMA', 'PUBLIC')
         )
         cursor = conn.cursor()
 
