@@ -2,6 +2,7 @@ import requests
 import json
 import os
 import logging
+from datetime import datetime, timezone # Line 5: Added to handle UTC time
 
 # Simple setup: easiest way to see what's happening
 logging.basicConfig(level=logging.INFO)
@@ -19,16 +20,22 @@ def extract_data():
         data = response.json()
         
         # 2. VALIDATE (The "Volume Guardrail" Feature)
-        # We check if it's a list AND if we got enough coins to be useful
         if not isinstance(data, list) or len(data) < 10:
             raise ValueError(f"Data Quality Failed: Received only {len(data) if isinstance(data, list) else 'nothing'}")
 
-        # 3. SAVE (The "Landing Zone")
+        # 3. ADD TIMESTAMP (Fixing the -478 Error)
+        # We loop through each coin and add the exact UTC time right now.
+        # This ensures every coin has a "birth time" before it hits Snowflake.
+        extraction_time = datetime.now(timezone.utc).isoformat()
+        for coin in data:
+            coin['captured_at'] = extraction_time # Line 32: Adding time to each coin
+
+        # 4. SAVE (The "Landing Zone")
         os.makedirs('data', exist_ok=True)
         with open('data/raw_crypto.json', 'w') as f:
-            json.dump(data, f)
+            json.dump(data, f) # Saving as a simple list, just like before
             
-        logger.info(f"✅ Success! {len(data)} coins saved to raw_crypto.json")
+        logger.info(f"✅ Success! {len(data)} coins saved with names and timestamps.")
         return data
         
     except Exception as e:

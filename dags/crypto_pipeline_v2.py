@@ -44,7 +44,7 @@ default_args = {
 }
 
 with DAG(
-    'crypto_modular_pipeline_v3',
+    'crypto_modular_pipeline_v2',
     default_args=default_args,
     schedule_interval='@hourly',
     start_date=datetime(2026, 2, 1),

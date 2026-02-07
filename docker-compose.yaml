@@ -7,6 +7,7 @@ services:
     # Volumes link your local Windows project folders into the Docker container
     volumes:
       - ./dags:/opt/airflow/dags
+      - ./src:/opt/airflow/src
       - ./logs:/opt/airflow/logs
       - ./plugins:/opt/airflow/plugins
       - ./requirements.txt:/opt/airflow/requirements.txt
