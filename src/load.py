@@ -1,19 +1,28 @@
-import snowflake.connector, pandas as pd, os
+import snowflake.connector
+import pandas as pd
+import os
 from dotenv import load_dotenv
 
 def load_data():
     load_dotenv()
-    # Read the data from your transformation step
+    
+    if not os.path.exists("data/processed_crypto/cleaned_data.csv"):
+        raise FileNotFoundError("Cleaned CSV not found for loading!")
+
     df = pd.read_csv("data/processed_crypto/cleaned_data.csv")
     
+    # Fully dynamic connection
     conn = snowflake.connector.connect(
-        user=os.getenv('SNOWFLAKE_USER'), password=os.getenv('SNOWFLAKE_PASS'),
-        account=os.getenv('SNOWFLAKE_ACCOUNT'), warehouse=os.getenv('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'), # Added a default just in case
-        database=os.getenv('SNOWFLAKE_DATABASE', 'CRYPTO_DB'), schema=os.getenv('SNOWFLAKE_SCHEMA', 'PUBLIC')
+        user=os.getenv('SNOWFLAKE_USER'),
+        password=os.getenv('SNOWFLAKE_PASS'),
+        account=os.getenv('SNOWFLAKE_ACCOUNT'),
+        warehouse=os.getenv('SNOWFLAKE_WAREHOUSE'),
+        database=os.getenv('SNOWFLAKE_DATABASE'),
+        schema=os.getenv('SNOWFLAKE_SCHEMA')
     )
     cursor = conn.cursor()
 
-    # 1. Create Stage (Must match the column names in your SQL setup script)
+    # 1. Staging (Transient = Cost Effective)
     cursor.execute("""
         CREATE OR REPLACE TRANSIENT TABLE COIN_DATA_STAGE (
             COIN_NAME STRING, SYMBOL STRING, CURRENT_PRICE NUMBER(38,8),
@@ -21,12 +30,11 @@ def load_data():
         )
     """)
     
-    # 2. Batch Insert (Order must match the Stage table above)
+    # 2. Batch Ingest
     cols = "INSERT INTO COIN_DATA_STAGE VALUES (%s, %s, %s, %s, %s, %s)"
     cursor.executemany(cols, [tuple(x) for x in df.to_numpy()])
 
-    # 3. The "Sync-Matched" Merge (Using your exact database column names)
-    # This prevents the 'invalid identifier' error by matching Snowflake.
+    # 3. The Idempotent Merge
     cursor.execute("""
         MERGE INTO COIN_DATA AS t USING COIN_DATA_STAGE AS s
         ON t.COIN_NAME = s.COIN_NAME AND t.INGESTION_TIME = s.INGESTION_TIME
@@ -40,7 +48,4 @@ def load_data():
     conn.commit()
     cursor.close()
     conn.close()
-    print(f"✅ Successfully Loaded {len(df)} rows.")
-
-if __name__ == "__main__":
-    load_data()
+    return len(df)
