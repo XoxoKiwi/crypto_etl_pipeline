@@ -8,8 +8,8 @@ def load_data():
     
     conn = snowflake.connector.connect(
         user=os.getenv('SNOWFLAKE_USER'), password=os.getenv('SNOWFLAKE_PASS'),
-        account=os.getenv('SNOWFLAKE_ACCOUNT'), warehouse='COMPUTE_WH', 
-        database='CRYPTO_DB', schema='PUBLIC'
+        account=os.getenv('SNOWFLAKE_ACCOUNT'), warehouse=os.getenv('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH'), # Added a default just in case
+        database=os.getenv('SNOWFLAKE_DATABASE', 'CRYPTO_DB'), schema=os.getenv('SNOWFLAKE_SCHEMA', 'PUBLIC')
     )
     cursor = conn.cursor()
 
